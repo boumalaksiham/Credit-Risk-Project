@@ -1,5 +1,10 @@
 # Credit Risk Classification — Siham Boumalak (R Version)
 
+## Evaluation status
+
+The scripts are available, but this checkout contains no committed dataset or run outputs. No performance result is verified by this README. `week1_data_preprocessing.R` fits scaling on all rows before splitting, which leaks holdout statistics. `improve_metrics.R` should also be reviewed for oversampling and model-selection placement before using its scores as independent test results. Rebuild preprocessing inside the training/CV workflow, keep a final holdout untouched, and rerun before publishing metrics. The scripts encode good credit as the positive class; label interpretation matters when reporting risk recall.
+
+
 ## Project Structure
 
 ```
@@ -113,5 +118,5 @@ Scripts must be run in order — later scripts load `.rds` files saved by earlie
 
 - Models are saved as `.rds` files (R's native serialisation format), replacing Python's `.pkl` files.
 - The `caret` package provides a unified interface analogous to scikit-learn pipelines.
-- `glmnet`'s `lambda` parameter equals `1/C` from scikit-learn's `LogisticRegression`.
+- `glmnet`'s `lambda` and scikit-learn's `C` control regularization in opposite directions, but they are not generally exact reciprocals across implementations and objective scaling.
 - Tree models (RF, XGBoost, GBM) are trained on unscaled features (`X_train_raw`), consistent with the Python version.
