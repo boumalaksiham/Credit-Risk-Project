@@ -57,12 +57,12 @@ install.packages(c(
   "pROC",           # ROC curves and AUC
   "reshape2",       # data reshaping for heatmaps
   "gridExtra",      # multi-panel plots
-  "grid",           # text grob for dashboard
-  "DMwR2",          # SMOTE oversampling
   "xgboost",        # XGBoost (used by caret)
   "gbm"             # Gradient Boosting (used by caret)
 ))
 ```
+
+`grid` is included with R and does not need a separate installation. The optional optimization script currently loads `DMwR2` and calls `SMOTE()`, but DMwR2 does not provide that function (see its [published function index](https://search.r-project.org/CRAN/refmans/DMwR2/html/00Index.html)). Installing DMwR2 alone does not make that script runnable. Restore a compatible original implementation or revise the oversampling code and validation workflow before enabling this stage.
 
 ## Dataset
 
@@ -84,7 +84,7 @@ source("week6_fairness_interpretability.R")
 source("week7_final_evaluation.R")
 
 # Optional: advanced optimization
-source("improve_metrics.R")
+# source("improve_metrics.R")  # blocked by the SMOTE dependency mismatch
 
 # Optional: statistical significance testing
 source("mcnemar_test.R")
@@ -107,7 +107,7 @@ Scripts must be run in order — later scripts load `.rds` files saved by earlie
 | `RandomForestClassifier`            | `randomForest::randomForest()`           |
 | `XGBClassifier`                     | `xgboost` via `caret` (method="xgbTree")|
 | `GradientBoostingClassifier`        | `gbm` via `caret` (method="gbm")        |
-| `SMOTE` (imblearn)                  | `DMwR2::SMOTE()`                         |
+| `SMOTE` (imblearn)                  | Requires a compatible R implementation; current DMwR2 call is unresolved |
 | `VotingClassifier`                  | manual ensemble averaging of probabilities |
 | `joblib.dump/load`                  | `saveRDS()` / `readRDS()`               |
 | `confusion_matrix` + `seaborn`      | `caret::confusionMatrix()` + `ggplot2`   |
