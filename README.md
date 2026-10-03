@@ -5,6 +5,18 @@
 The scripts are available, but this checkout contains no committed dataset or run outputs. No performance result is verified by this README. `week1_data_preprocessing.R` fits scaling on all rows before splitting, which leaks holdout statistics. `improve_metrics.R` should also be reviewed for oversampling and model-selection placement before using its scores as independent test results. Rebuild preprocessing inside the training/CV workflow, keep a final holdout untouched, and rerun before publishing metrics. The scripts encode good credit as the positive class; label interpretation matters when reporting risk recall.
 
 
+## Purpose and outputs
+
+Compare classification models for German credit data and explore error patterns, interpretability and group-level fairness. This is an educational analysis workflow, not a validated lending decision system. The source is available, but no model performance is claimed without a reproducible run and evaluation-method fixes.
+
+## Input contract
+
+The first script expects `data/german_credit_data.csv`, including an index column read with `row.names = 1`. It expects `Risk` values `good`/`bad` and columns such as Age, Sex, Job, Housing, Saving accounts, Checking account, Credit amount, Duration and Purpose; R converts spaces in headers to dots. Check the downloaded schema before running. **Good credit is encoded as 1**, so a positive-class metric measures good-credit prediction rather than detection of bad credit.
+
+## Working directory
+
+Run all scripts from the cloned repository root so relative `data/` and `outputs/` paths resolve correctly. The first script creates preprocessing outputs; later scripts load those outputs and model artifacts. Running a later stage first produces missing-file errors. Some optional packages may be unavailable in a current R repository; record a verified R/package environment before claiming reproducibility.
+
 ## Project Structure
 
 ```
@@ -120,3 +132,9 @@ Scripts must be run in order — later scripts load `.rds` files saved by earlie
 - The `caret` package provides a unified interface analogous to scikit-learn pipelines.
 - `glmnet`'s `lambda` and scikit-learn's `C` control regularization in opposite directions, but they are not generally exact reciprocals across implementations and objective scaling.
 - Tree models (RF, XGBoost, GBM) are trained on unscaled features (`X_train_raw`), consistent with the Python version.
+
+## Evaluation requirements
+
+Move scaling and learned preprocessing inside the training/CV workflow before reporting independent results. Use validation data for model/threshold selection, keep a final holdout untouched, and report bad-credit recall alongside good-credit metrics with the class convention explicit. Fairness estimates should include subgroup counts and uncertainty; small-group differences alone do not establish fairness.
+
+Save `sessionInfo()`, data provenance/version, split settings, metrics and generated artifacts with any reported result. The optional McNemar script compares paired model errors on the same observations; statistical significance is not a measure of practical effect size.
