@@ -16,8 +16,8 @@ dir.create(OUTPUT_DIR, showWarnings = FALSE)
 # 1. LOAD DATA AND MODELS
 # -----------------------------------------------------------------------------
 
-X_train_scaled <- read.csv(file.path(OUTPUT_DIR, "X_train_scaled.csv"))
-X_test_scaled  <- read.csv(file.path(OUTPUT_DIR, "X_test_scaled.csv"))
+X_train_scaled <- read.csv(file.path(OUTPUT_DIR, "X_train_raw.csv"))
+X_test_scaled  <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 X_train_raw    <- read.csv(file.path(OUTPUT_DIR, "X_train_raw.csv"))
 X_test_raw     <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 y_train        <- read.csv(file.path(OUTPUT_DIR, "y_train.csv"))$Risk
@@ -149,7 +149,9 @@ get_cv_f1 <- function(model, X_tr, is_rf = FALSE) {
       fit <- randomForest(x = X_tr_fold, y = y_tr_fold, ntree = 200)
       preds <- predict(fit, X_val_fold)
     } else {
-      fit   <- update(model, x = X_tr_fold, y = y_tr_fold)
+      fit <- train(x = X_tr_fold, y = y_tr_fold, method = model$method,
+                   preProcess = c("center", "scale"), tuneGrid = model$bestTune,
+                   trControl = trainControl(method = "none", classProbs = TRUE))
       preds <- predict(fit, X_val_fold)
     }
     cm_cv <- confusionMatrix(preds, y_val_fold, positive = "Good")
@@ -222,7 +224,7 @@ cat(sprintf("Saved: %s/confusion_matrix_comparison.png\n", OUTPUT_DIR))
 # Best model
 best_model_name <- rownames(summary_df)[which.max(summary_df$F1)]
 cat("\n", strrep("=", 70), "\n")
-cat(sprintf("RECOMMENDED BEST MODEL (by F1): %s\n", best_model_name))
+cat(sprintf("HIGHEST OBSERVED HOLDOUT F1 (descriptive; not model selection): %s\n", best_model_name))
 cat(strrep("=", 70), "\n")
 print(summary_df[best_model_name, ])
 cat("Week 5 complete!\n")

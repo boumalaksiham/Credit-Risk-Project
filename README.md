@@ -10,8 +10,11 @@ The workflow separates model fitting, comparison, and subgroup analysis into sev
 
 ## Evaluation status
 
-The scripts are available, but this checkout contains no committed dataset or run outputs. No performance result is verified by this README. `week1_data_preprocessing.R` fits scaling on all rows before splitting, which leaks holdout statistics. `improve_metrics.R` should also be reviewed for oversampling and model-selection placement before using its scores as independent test results. Rebuild preprocessing inside the training/CV workflow, keep a final holdout untouched, and rerun before publishing metrics. The scripts encode good credit as the positive class; label interpretation matters when reporting risk recall.
+The scripts now split on a categorical target before learning category levels or scaling. Scaled exports use only training statistics; Logistic Regression and SVM receive raw predictors and fit scaling inside each caret resampling fold. A shared metric function returns the F1 score requested by tuning, with **Good as the positive class**.
 
+The optional optimization stage compares Logistic Regression and Random Forest, with and without **random oversampling inside training folds**. It selects a candidate by training CV F1, calibrates its threshold on separate training-partition rows, then evaluates that frozen candidate on the original holdout. It replaces the broken DMwR2/SMOTE path and avoids synthetic interpolation across one-hot categorical predictors.
+
+No dataset or new run outputs are committed here. These fixes do not establish new model performance. The weekly comparison reports are descriptive: their reused holdout must not be used to choose another model or tune additional parameters. Training-CV tuning scores are not nested, unbiased estimates. Raw categorical encoding is learned on the outer training partition; a fully fold-local categorical recipe remains a possible extension.
 
 ## Purpose and outputs
 
@@ -59,7 +62,8 @@ Install required packages in R:
 install.packages(c(
   "tidyverse",      # data manipulation & ggplot2
   "caret",          # unified ML training interface
-  "e1071",          # SVM (used by caret)
+  "e1071",          # supporting classification utilities
+  "kernlab",        # caret svmLinear/svmRadial models
   "randomForest",   # Random Forest
   "glmnet",         # Logistic Regression with regularisation
   "pROC",           # ROC curves and AUC
@@ -70,7 +74,7 @@ install.packages(c(
 ))
 ```
 
-`grid` is included with R and does not need a separate installation. The optional optimization script currently loads `DMwR2` and calls `SMOTE()`, but DMwR2 does not provide that function (see its [published function index](https://search.r-project.org/CRAN/refmans/DMwR2/html/00Index.html)). Installing DMwR2 alone does not make that script runnable. Restore a compatible original implementation or revise the oversampling code and validation workflow before enabling this stage.
+`grid` is included with R. The optional optimization stage no longer requires DMwR2, XGBoost, or GBM; it uses caret's built-in random oversampling. Install `kernlab` for caret's SVM implementations.
 
 ## Dataset
 
@@ -92,7 +96,7 @@ source("week6_fairness_interpretability.R")
 source("week7_final_evaluation.R")
 
 # Optional: advanced optimization
-# source("improve_metrics.R")  # blocked by the SMOTE dependency mismatch
+source("improve_metrics.R")  # CV selection + separate threshold calibration
 
 # Optional: statistical significance testing
 source("mcnemar_test.R")
@@ -115,7 +119,7 @@ Scripts must be run in order — later scripts load `.rds` files saved by earlie
 | `RandomForestClassifier`            | `randomForest::randomForest()`           |
 | `XGBClassifier`                     | `xgboost` via `caret` (method="xgbTree")|
 | `GradientBoostingClassifier`        | `gbm` via `caret` (method="gbm")        |
-| `SMOTE` (imblearn)                  | Requires a compatible R implementation; current DMwR2 call is unresolved |
+| Random oversampling | `caret::trainControl(sampling="up")`, inside training folds |
 | `VotingClassifier`                  | manual ensemble averaging of probabilities |
 | `joblib.dump/load`                  | `saveRDS()` / `readRDS()`               |
 | `confusion_matrix` + `seaborn`      | `caret::confusionMatrix()` + `ggplot2`   |
@@ -143,6 +147,14 @@ Scripts must be run in order — later scripts load `.rds` files saved by earlie
 
 ## Evaluation requirements
 
-Move scaling and learned preprocessing inside the training/CV workflow before reporting independent results. Use validation data for model/threshold selection, keep a final holdout untouched, and report bad-credit recall alongside good-credit metrics with the class convention explicit. Fairness estimates should include subgroup counts and uncertainty; small-group differences alone do not establish fairness.
+Scaling is fit within caret training folds for LR/SVM. The optional stage separates threshold calibration from model fitting. Report bad-credit recall alongside good-credit metrics, and use a fresh external cohort if the existing holdout has influenced further decisions. Fairness estimates should include subgroup counts and uncertainty; small-group differences alone do not establish fairness.
 
 Save `sessionInfo()`, data provenance/version, split settings, metrics and generated artifacts with any reported result. The optional McNemar script compares paired model errors on the same observations; statistical significance is not a measure of practical effect size.
+
+## Regression checks
+
+```bash
+Rscript tests/test_evaluation.R
+```
+
+These checks exercise training-only scaler fitting, the positive-class metric convention, and threshold selection. GitHub Actions also parses every R file. They do not train the full workflow or replace dataset-level evaluation. After changing preprocessing, rerun week 1 and all downstream stages; older scaled exports/model files are incompatible with the new raw-input model contract.

@@ -5,6 +5,7 @@
 
 library(tidyverse)
 library(caret)
+source("evaluation_helpers.R")
 library(e1071)
 library(pROC)
 library(ggplot2)
@@ -16,8 +17,8 @@ dir.create(OUTPUT_DIR, showWarnings = FALSE)
 # 1. LOAD PREPROCESSED DATA
 # -----------------------------------------------------------------------------
 
-X_train <- read.csv(file.path(OUTPUT_DIR, "X_train_scaled.csv"))
-X_test  <- read.csv(file.path(OUTPUT_DIR, "X_test_scaled.csv"))
+X_train <- read.csv(file.path(OUTPUT_DIR, "X_train_raw.csv"))
+X_test  <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 y_train <- read.csv(file.path(OUTPUT_DIR, "y_train.csv"))$Risk
 y_test  <- read.csv(file.path(OUTPUT_DIR, "y_test.csv"))$Risk
 
@@ -29,7 +30,7 @@ ctrl <- trainControl(
   method          = "cv",
   number          = 5,
   classProbs      = TRUE,
-  summaryFunction = twoClassSummary
+  summaryFunction = credit_summary
 )
 
 # -----------------------------------------------------------------------------
@@ -47,6 +48,7 @@ gs_linear <- train(
   Risk ~ .,
   data      = train_df,
   method    = "svmLinear",
+  preProcess = c("center", "scale"),
   trControl = ctrl,
   tuneGrid  = tune_linear,
   metric    = "F",
@@ -74,6 +76,7 @@ gs_rbf <- train(
   Risk ~ .,
   data      = train_df,
   method    = "svmRadial",
+  preProcess = c("center", "scale"),
   trControl = ctrl,
   tuneGrid  = tune_rbf,
   metric    = "F",
@@ -114,6 +117,7 @@ cv_metrics <- lapply(folds, function(idx) {
   fit <- train(
     x = X_cv_train, y = y_cv_train,
     method    = method_name,
+    preProcess = c("center", "scale"),
     trControl = trainControl(method = "none", classProbs = TRUE),
     tuneGrid  = best_svm$bestTune,
     prob.model = TRUE

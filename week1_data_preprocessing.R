@@ -127,6 +127,13 @@ cat("\n", strrep("=", 60), "\n")
 cat("PREPROCESSING\n")
 cat(strrep("=", 60), "\n")
 
+source("evaluation_helpers.R")
+if (anyNA(df$Risk) || !all(df$Risk %in% c("good", "bad"))) {
+  stop("Risk must contain only good/bad labels, with no missing target values.")
+}
+# Split using a factor so caret preserves class proportions.
+set.seed(42)
+train_idx <- as.vector(createDataPartition(factor(df$Risk), p = 0.8, list = FALSE))
 df_processed <- df
 
 # Target encoding: good=1, bad=0
@@ -143,37 +150,39 @@ for (col in c("Saving.accounts", "Checking.account")) {
 df_processed$Sex <- ifelse(df_processed$Sex == "male", 1, 0)
 cat("Sex encoded: male=1, female=0\n")
 
-# One-hot encoding
+# Learn categorical levels on training rows only. Reserve unknown for unseen values.
 ohe_cols <- c("Housing", "Saving.accounts", "Checking.account", "Purpose")
-dummy_formula <- as.formula(paste("~ ", paste(ohe_cols, collapse = " + ")))
-dummies <- model.matrix(dummy_formula, data = df_processed)[, -1]  # drop intercept
+category_levels <- lapply(df_processed[train_idx, ohe_cols, drop = FALSE], function(x) {
+  unique(c(sort(unique(as.character(x[!is.na(x)]))), "unknown"))
+})
+for (col in ohe_cols) {
+  values <- as.character(df_processed[[col]])
+  values[is.na(values) | !values %in% category_levels[[col]]] <- "unknown"
+  df_processed[[col]] <- factor(values, levels = category_levels[[col]])
+}
+dummy_formula <- as.formula(paste("~", paste(ohe_cols, collapse = " + ")))
+dummies <- model.matrix(dummy_formula, data = df_processed)[, -1, drop = FALSE]
 df_processed <- cbind(df_processed[, !names(df_processed) %in% ohe_cols], dummies)
-cat(sprintf("One-hot encoded columns: %s\n", paste(ohe_cols, collapse = ", ")))
-
-# Feature / target split
 y <- df_processed$Risk
 X <- df_processed[, names(df_processed) != "Risk"]
+if (anyNA(X)) stop("Predictors still contain missing values; inspect the source data.")
+X_train_raw <- X[train_idx, , drop = FALSE]
+X_test_raw <- X[-train_idx, , drop = FALSE]
+y_train <- y[train_idx]
+y_test <- y[-train_idx]
 
-cat(sprintf("\nFeature matrix shape: %d x %d\n", nrow(X), ncol(X)))
-cat(sprintf("Target vector shape:  %d\n", length(y)))
-
-# Feature scaling (for LR and SVM)
+# Export train-fitted scaled data for inspection. Models below train on raw
+# predictors and let caret fit preprocessing separately inside each CV fold.
 numerical_to_scale <- c("Age", "Credit.amount", "Duration", "Job")
-preproc <- preProcess(X[, numerical_to_scale], method = c("center", "scale"))
-X_scaled <- X
-X_scaled[, numerical_to_scale] <- predict(preproc, X[, numerical_to_scale])
-cat(sprintf("Scaled numerical features: %s\n", paste(numerical_to_scale, collapse = ", ")))
-
-# Stratified train-test split (80/20)
-set.seed(42)
-train_idx <- createDataPartition(y, p = 0.8, list = FALSE)
-
-X_train       <- X_scaled[train_idx, ]
-X_test        <- X_scaled[-train_idx, ]
-X_train_raw   <- X[train_idx, ]
-X_test_raw    <- X[-train_idx, ]
-y_train       <- y[train_idx]
-y_test        <- y[-train_idx]
+preproc <- fit_credit_preprocessor(X_train_raw, numerical_to_scale)
+X_train <- X_train_raw
+X_test <- X_test_raw
+X_train[, numerical_to_scale] <- predict(preproc, X_train_raw[, numerical_to_scale])
+X_test[, numerical_to_scale] <- predict(preproc, X_test_raw[, numerical_to_scale])
+saveRDS(category_levels, file.path(OUTPUT_DIR, "category_levels.rds"))
+write.csv(data.frame(row_index = seq_len(nrow(df)),
+                     partition = ifelse(seq_len(nrow(df)) %in% train_idx, "train", "test")),
+          file.path(OUTPUT_DIR, "split_manifest.csv"), row.names = FALSE)
 
 cat(sprintf("\nTrain set size: %d samples\n", nrow(X_train)))
 cat(sprintf("Test set size:  %d samples\n",  nrow(X_test)))

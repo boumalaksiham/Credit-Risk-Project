@@ -5,6 +5,7 @@
 
 library(tidyverse)
 library(caret)
+source("evaluation_helpers.R")
 library(randomForest)
 library(pROC)
 library(ggplot2)
@@ -29,7 +30,7 @@ ctrl <- trainControl(
   method          = "cv",
   number          = 5,
   classProbs      = TRUE,
-  summaryFunction = twoClassSummary
+  summaryFunction = credit_summary
 )
 
 # -----------------------------------------------------------------------------

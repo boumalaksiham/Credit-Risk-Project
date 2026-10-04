@@ -5,6 +5,7 @@
 
 library(tidyverse)
 library(caret)
+source("evaluation_helpers.R")
 library(pROC)
 library(ggplot2)
 library(reshape2)
@@ -16,8 +17,8 @@ dir.create(OUTPUT_DIR, showWarnings = FALSE)
 # 1. LOAD PREPROCESSED DATA
 # -----------------------------------------------------------------------------
 
-X_train <- read.csv(file.path(OUTPUT_DIR, "X_train_scaled.csv"))
-X_test  <- read.csv(file.path(OUTPUT_DIR, "X_test_scaled.csv"))
+X_train <- read.csv(file.path(OUTPUT_DIR, "X_train_raw.csv"))
+X_test  <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 y_train <- read.csv(file.path(OUTPUT_DIR, "y_train.csv"))$Risk
 y_test  <- read.csv(file.path(OUTPUT_DIR, "y_test.csv"))$Risk
 
@@ -42,12 +43,11 @@ ctrl <- trainControl(
   method          = "cv",
   number          = 5,
   classProbs      = TRUE,
-  summaryFunction = twoClassSummary,
-  savePredictions = "final",
-  seeds           = lapply(1:6, function(i) 42)
+  summaryFunction = credit_summary,
+  savePredictions = "final"
 )
 
-# Tune regularisation (C in sklearn = 1/lambda in R's glmnet)
+# Tune glmnet regularization; lambda is not generally the exact reciprocal of sklearn C.
 tune_grid <- expand.grid(
   alpha  = 0,          # ridge (L2), equivalent to penalty='l2'
   lambda = c(10, 1, 0.1, 0.01, 0.001, 0.0001)  # 1/C
@@ -58,6 +58,7 @@ gs_lr <- train(
   Risk ~ .,
   data      = train_df,
   method    = "glmnet",
+    preProcess = c("center", "scale"),
   trControl = ctrl,
   tuneGrid  = tune_grid,
   metric    = "F",
@@ -84,6 +85,7 @@ cv_metrics <- lapply(folds, function(idx) {
   fit <- train(
     x = X_cv_train, y = y_cv_train,
     method    = "glmnet",
+    preProcess = c("center", "scale"),
     trControl = trainControl(method = "none", classProbs = TRUE),
     tuneGrid  = gs_lr$bestTune,
     family    = "binomial"
@@ -121,6 +123,7 @@ best_lr <- gs_lr$finalModel
 best_lr_train <- train(
   x = X_train, y = y_train_f,
   method    = "glmnet",
+    preProcess = c("center", "scale"),
   trControl = trainControl(method = "none", classProbs = TRUE),
   tuneGrid  = gs_lr$bestTune,
   family    = "binomial"

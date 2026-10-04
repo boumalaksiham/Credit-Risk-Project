@@ -1,0 +1,14 @@
+name: R regression checks
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+      - name: Install regression dependencies
+        run: Rscript -e 'install.packages(c("caret", "pROC"), repos="https://cloud.r-project.org")'
+      - name: Parse every R source file
+        run: Rscript -e 'for (f in list.files(pattern="[.]R$", recursive=TRUE)) parse(f)'
+      - name: Test preprocessing and metric conventions
+        run: Rscript tests/test_evaluation.R

@@ -7,7 +7,7 @@ library(tidyverse)
 
 OUTPUT_DIR <- "outputs"
 
-X_test_scaled <- read.csv(file.path(OUTPUT_DIR, "X_test_scaled.csv"))
+X_test_scaled <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 X_test_raw    <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 y_test        <- read.csv(file.path(OUTPUT_DIR, "y_test.csv"))$Risk
 y_test_f      <- factor(y_test, levels = c(0, 1), labels = c("Bad", "Good"))

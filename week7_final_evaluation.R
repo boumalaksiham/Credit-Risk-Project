@@ -18,7 +18,7 @@ dir.create(OUTPUT_DIR, showWarnings = FALSE)
 # 1. LOAD EVERYTHING
 # -----------------------------------------------------------------------------
 
-X_test_scaled <- read.csv(file.path(OUTPUT_DIR, "X_test_scaled.csv"))
+X_test_scaled <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 X_test_raw    <- read.csv(file.path(OUTPUT_DIR, "X_test_raw.csv"))
 y_test        <- read.csv(file.path(OUTPUT_DIR, "y_test.csv"))$Risk
 y_test_f      <- factor(y_test, levels = c(0, 1), labels = c("Bad", "Good"))
@@ -64,7 +64,7 @@ write.csv(final_table, file.path(OUTPUT_DIR, "final_results_table.csv"))
 cat(sprintf("\nSaved: %s/final_results_table.csv\n", OUTPUT_DIR))
 
 best_model_name <- rownames(final_table)[which.max(final_table$F1)]
-cat(sprintf("\n>>> Best model by F1-score: %s (%.4f)\n",
+cat(sprintf("\n>>> Highest observed holdout F1 (descriptive): %s (%.4f)\n",
             best_model_name, max(final_table$F1)))
 
 # -----------------------------------------------------------------------------
@@ -166,7 +166,7 @@ p_rf <- ggplot(fi_df, aes(x = reorder(Feature, Importance), y = Importance)) +
 
 # -- Summary text (row 3, col 3)
 summary_text <- sprintf(
-  "SUMMARY\n%s\nDataset: German Credit Data\nSamples: 1,001 | Features: 9\n\nBest Model: %s\n  F1:      %.4f\n  ROC-AUC: %.4f\n  Recall:  %.4f\n\nAll Models Evaluated On:\n  Accuracy, Precision\n  Recall, F1, ROC-AUC\n  Fairness (gender/age)\n  Interpretability\n\nKey Finding:\n  Credit amount & duration\n  are top predictive features.",
+  "SUMMARY\n%s\nDataset: German Credit Data\nSample/feature counts: inspect split_manifest.csv and feature_names.rds\n\nHighest observed holdout F1: %s\n  F1:      %.4f\n  ROC-AUC: %.4f\n  Recall:  %.4f\n\nAll Models Evaluated On:\n  Accuracy, Precision\n  Recall, F1, ROC-AUC\n  Fairness (gender/age)\n  Interpretability\n\nInterpretation:\n  Inspect saved coefficients and importances;\n  this summary does not establish a fixed feature ranking.",
   strrep("-", 30),
   best_model_name,
   final_table[best_model_name, "F1"],
