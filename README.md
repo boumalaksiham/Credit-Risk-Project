@@ -1,5 +1,13 @@
 # Credit Risk Classification — Siham Boumalak (R Version)
 
+## Analysis question
+
+How do logistic regression, SVM, and Random Forest differ when predicting good versus bad credit, and how do their errors vary by age and sex?
+
+The workflow separates model fitting, comparison, and subgroup analysis into seven stages. Logistic coefficients and Random Forest feature importance support different kinds of interpretation; neither establishes that an input causes credit risk. The practical question is which errors each model makes, rather than which one has the largest accuracy alone.
+
+**Start here:** [week1_data_preprocessing.R](week1_data_preprocessing.R) defines the data preparation; [week5_model_comparison.R](week5_model_comparison.R) compares models; [week6_fairness_interpretability.R](week6_fairness_interpretability.R) examines subgroup behavior. The evaluation issues below must be addressed before treating generated scores as independent evidence.
+
 ## Evaluation status
 
 The scripts are available, but this checkout contains no committed dataset or run outputs. No performance result is verified by this README. `week1_data_preprocessing.R` fits scaling on all rows before splitting, which leaks holdout statistics. `improve_metrics.R` should also be reviewed for oversampling and model-selection placement before using its scores as independent test results. Rebuild preprocessing inside the training/CV workflow, keep a final holdout untouched, and rerun before publishing metrics. The scripts encode good credit as the positive class; label interpretation matters when reporting risk recall.
